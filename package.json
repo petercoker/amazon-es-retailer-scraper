@@ -1,0 +1,13 @@
+{
+  "name": "amazon-es-retailer-scraper",
+  "version": "1.0.0",
+  "main": "src/retailer.ts",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.51.0",
+    "typescript": "^5.6.2",
+    "ts-node": "^10.9.2"
+  }
+}
