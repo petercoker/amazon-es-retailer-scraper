@@ -1,9 +1,13 @@
 {
-  "name": "amazon-es-retailer-scraper",
+  "name": "amazon-es-retailer",
   "version": "1.0.0",
   "main": "src/retailer.ts",
   "scripts": {
-    "test": "playwright test"
+    "test": "playwright test",
+    "build": "tsc",
+    "start": "node dist/cli.js",
+    "dev": "ts-node src/cli.ts",
+    "demo": "ts-node src/cli.ts \"MacBook Pro M5\""
   },
   "devDependencies": {
     "@playwright/test": "^1.51.0",
