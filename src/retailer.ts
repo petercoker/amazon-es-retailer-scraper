@@ -1,6 +1,7 @@
 import { ProductDetail, ProductListItem } from "./types";
 import { BrowserManager } from "./utility/browser";
-
+import { AMAZON_BASE_URL } from "./utility/constants";
+import { safeGoto, safeWaitForSelector } from "./utility/page-actions";
 /**
  * Main scraper class for Amazon.es.
  * Uses shared browser instance (via BrowserManager) to avoid repeated launches.
@@ -11,96 +12,120 @@ export class AmazonRetailer {
   /**
    * Search Amazon and return list of products with asin, title, price.
    * @param keywords - Search term (e.g., "MacBook Pro M5")
+   * @param page - Optional existing page to reuse (avoids opening/closing)
    * @returns Array of product items (max 5)
    */
-  async getProductList(keywords: string): Promise<ProductListItem[]> {
+  async getProductList(
+    keywords: string,
+    page?: import("playwright").Page,
+  ): Promise<ProductListItem[]> {
     console.log(`Searching for: ${keywords}`);
 
-    const page = await this.browserManager.newPage();
+    const existingPage = page !== undefined;
+    const targetPage = page ?? (await this.browserManager.newPage());
 
     try {
-      await page.goto(
-        `https://www.amazon.es/s?k=${encodeURIComponent(keywords)}`,
-        {
-          waitUntil: "domcontentloaded",
-        },
+      const url = `${AMAZON_BASE_URL}/s?k=${encodeURIComponent(keywords)}`;
+      await safeGoto(targetPage, url);
+      await safeWaitForSelector(
+        targetPage,
+        "div[data-component-type='s-search-result'], .s-result-item[data-asin]",
+        3,
       );
 
-      await page.waitForSelector("div.s-result-item", { timeout: 15000 });
-
-      const items = await page.evaluate(() => {
-        return Array.from(document.querySelectorAll("div.s-result-item"))
-          .map((el) => {
-            const asin = el.getAttribute("data-asin");
-            if (!asin || asin.length <= 5) return null;
-
-            // Title fallback selectors (Amazon layout changes often)
-            const titleEl =
-              el.querySelector("h2 span.a-size-medium") ||
-              el.querySelector("h2 a span") ||
-              el.querySelector("h2");
-
-            const title = titleEl ? titleEl.textContent?.trim() : "No title";
-
-            // Clean price (hidden but reliable)
-            const priceEl = el.querySelector(".a-price .a-offscreen");
-            const price = priceEl ? priceEl.textContent?.trim() : "No price";
-
-            return { asin, title, price };
-          })
-          .filter((item): item is ProductListItem => item !== null)
-          .slice(0, 5);
+      await targetPage.waitForSelector("div.s-result-item", {
+        timeout: 15000,
       });
 
-      return items;
+      return await targetPage.evaluate(() => {
+        const productListItems: ProductListItem[] = [];
+        // Target any div that has a data-asin attribute (standard for search results)
+        const nodes = document.querySelectorAll("div[data-asin]");
+
+        for (const node of Array.from(nodes)) {
+          const asin = node.getAttribute("data-asin");
+          // Filter out empty asins or ads
+          if (!asin || asin.length < 5) continue;
+
+          // Use broader selectors for Title and Price
+          const titleEl = node.querySelector(
+            "h2, .a-size-medium, .a-size-base-plus",
+          );
+          const title = titleEl?.textContent?.trim() || "No title";
+
+          const priceEl = node.querySelector(
+            ".a-price .a-offscreen, .a-color-price",
+          );
+          const price = priceEl?.textContent?.trim() || "No price";
+
+          if (title && !productListItems.find((i) => i.asin === asin)) {
+            productListItems.push({
+              asin,
+              title,
+              price: price || "Check website",
+            });
+          }
+          if (productListItems.length >= 5) break;
+        }
+        return productListItems;
+      });
+    } catch (error) {
+      // Take a screenshot if it fails so you can see if you got hit by a CAPTCHA
+      await targetPage.screenshot({ path: `error-search-${Date.now()}.png` });
+      throw new Error(
+        `Failed to get product list: ${(error as Error).message}`,
+      );
     } finally {
-      await page.close(); // Always close page, keep browser alive
+      // Only close the page if we created it (not reusing an existing page)
+      if (!existingPage) {
+        await targetPage.close();
+      }
     }
   }
 
   /**
    * Fetch full details for a single product by ASIN.
    * @param asin - Amazon product ID (e.g. "B0DLHH2QR6")
+   * @param page - Optional existing page to reuse (avoids opening/closing)
    * @returns Product details (asin, title, price, images)
    */
-  async getProduct(asin: string): Promise<ProductDetail> {
+  async getProduct(
+    asin: string,
+    page?: import("playwright").Page,
+  ): Promise<ProductDetail> {
     console.log(`Fetching product: ${asin}`);
 
-    const page = await this.browserManager.newPage();
+    const existingPage = page !== undefined;
+    const targetPage = page ?? (await this.browserManager.newPage());
 
     try {
-      await page.goto(`https://www.amazon.es/dp/${asin}`, {
-        waitUntil: "domcontentloaded",
-      });
+      const url = `${AMAZON_BASE_URL}/dp/${asin}`;
+      // Updated to use the utility
+      await safeGoto(targetPage, url);
+      await safeWaitForSelector(targetPage, "#productTitle", 3);
 
-      await page.waitForSelector("#productTitle", { timeout: 15000 });
-
-      const detail = await page.evaluate((productAsin) => {
+      return await targetPage.evaluate((productAsin) => {
         const title =
           document.querySelector("#productTitle")?.textContent?.trim() ||
-          document.querySelector("h1 span")?.textContent?.trim() ||
           "No title found";
-
         const priceEl =
           document.querySelector(".a-price .a-offscreen") ||
-          document.querySelector("span.a-offscreen");
+          document.querySelector("#price_inside_buybox");
         const price = priceEl?.textContent?.trim() || "No price";
 
         const images = Array.from(
-          document.querySelectorAll(
-            "#landingImage, #imgTagWrapperId img, #altImages img",
-          ),
+          document.querySelectorAll("#landingImage, #imgTagWrapperId img"),
         )
           .map((img) => (img as HTMLImageElement).src)
-          .filter(Boolean)
           .slice(0, 5);
 
         return { asin: productAsin, title, price, images };
       }, asin);
-
-      return detail;
     } finally {
-      await page.close();
+      // Only close the page if we created it (not reusing an existing page)
+      if (!existingPage) {
+        await targetPage.close();
+      }
     }
   }
 
