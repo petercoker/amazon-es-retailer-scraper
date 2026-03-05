@@ -1,5 +1,5 @@
 import { ProductDetail, ProductListItem } from "./types";
-import { BrowserManager } from "./utility/browser";
+import { BrowserManager } from "./utility/browser-manager";
 import { AMAZON_BASE_URL } from "./utility/constants";
 import { safeGoto, safeWaitForSelector } from "./utility/page-actions";
 /**

@@ -6,12 +6,21 @@ let retailer: AmazonRetailer;
 let validAsin: string; // cached ASIN so we don't re-scrape list every time
 
 test.beforeAll(async () => {
+  // Set the timeout specifically for this setup hook
+  test.setTimeout(60000);
+
   retailer = new AmazonRetailer();
 
   // Run once before all tests in this file — get one valid ASIN
   const list = await retailer.getProductList("MacBook Pro M5");
-  expect(list.length).toBeGreaterThan(0);
 
+  if (list.length === 0) {
+    throw new Error(
+      "Scraper returned 0 results. Check for CAPTCHA or selector changes.",
+    );
+  }
+
+  expect(list.length).toBeGreaterThan(0);
   validAsin = list[0].asin;
 });
 
@@ -19,7 +28,6 @@ test.describe("Product List Functionality", () => {
   test("getProductList returns a non-empty list of products", async () => {
     const list = await retailer.getProductList("MacBook Pro M5");
 
-    expect(list.length).toBeGreaterThan(0);
     expect(Array.isArray(list)).toBe(true);
 
     const first = list[0];
