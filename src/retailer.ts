@@ -43,44 +43,36 @@ export class AmazonRetailer {
     return items;
   }
 
-  async getProduct(asin: string) {
-    // ASIN stands for Amazon Standard Identification Number instead of id
-    // It is a unique 10-character alphanumeric code assigned by Amazon to identify every product listed in its store.
-    console.log("getProduct called with asin:", asin); // debug - see if test calls it
+ async getProduct(id: string) {
+  console.log('getProduct called with ID:', id); // debug
 
-    const browser = await chromium.launch({ headless: false }); // visible for debug/demo
-    const page = await browser.newPage();
+  const browser = await chromium.launch({ headless: false }); // visible for demo
+  const page = await browser.newPage();
 
-    // Amazon product detail page URL format
-    await page.goto(`https://www.amazon.es/dp/${asin}`);
+  // Amazon product detail URL format: /dp/ASIN
+  await page.goto(`https://www.amazon.es/dp/${id}`);
 
-    // Wait for the main title element - very stable on detail pages
-    await page.waitForSelector("#productTitle", { timeout: 15000 });
+  // Wait for title (most stable element on detail page)
+  await page.waitForSelector('#productTitle', { timeout: 15000 });
 
-    const detail = await page.evaluate((productIdAsin) => {
-      const title =
-        document.querySelector("#productTitle")?.textContent?.trim() ||
-        document.querySelector("h1 span")?.textContent?.trim() ||
-        "No title found";
+  const detail = await page.evaluate((productId) => {
+    const title = document.querySelector('#productTitle')?.textContent?.trim() ||
+                  document.querySelector('h1 span')?.textContent?.trim() ||
+                  'No title found';
 
-      const priceEl =
-        document.querySelector(".a-price .a-offscreen") ||
-        document.querySelector("span.a-offscreen");
-      const price = priceEl?.textContent?.trim() || "No price";
+    const priceEl = document.querySelector('.a-price .a-offscreen') ||
+                    document.querySelector('span.a-offscreen');
+    const price = priceEl?.textContent?.trim() || 'No price';
 
-      const images = Array.from(
-        document.querySelectorAll(
-          "#landingImage, #imgTagWrapperId img, #altImages img",
-        ),
-      )
-        .map((img) => (img as HTMLImageElement).src)
-        .filter(Boolean)
-        .slice(0, 5);
+    const images = Array.from(document.querySelectorAll('#landingImage, #imgTagWrapperId img, #altImages img'))
+      .map(img => (img as HTMLImageElement).src)
+      .filter(Boolean)
+      .slice(0, 5);
 
-      return { asin: productIdAsin, title, price, images };
-    }, asin); // ← this sends the Node.js variable "asin" to the browser as "productIdAsin"
+    return { asin: productId, title, price, images };
+  }, id); // ← pass id into evaluate
 
-    await browser.close();
-    return detail;
-  }
+  await browser.close();
+  return detail;
+}
 }
