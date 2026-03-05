@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { BrowserManager } from "../src/utils/browser";
+import { BrowserManager } from "../src/utility/browser";
 
 test.describe("BrowserManager", () => {
   let manager: BrowserManager;

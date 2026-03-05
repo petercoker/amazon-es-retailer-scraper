@@ -1,5 +1,5 @@
 import { ProductDetail, ProductListItem } from "./types";
-import { BrowserManager } from "./utils/browser";
+import { BrowserManager } from "./utility/browser";
 
 /**
  * Main scraper class for Amazon.es.

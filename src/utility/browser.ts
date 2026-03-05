@@ -1,4 +1,8 @@
+import * as dotenv from "dotenv";
 import { Browser, chromium, Page } from "playwright";
+
+// Load environment variables from .env file
+dotenv.config();
 
 /**
  * Singleton manager for Playwright browser instance.
@@ -8,15 +12,15 @@ import { Browser, chromium, Page } from "playwright";
  * - Safe cleanup when done
  */
 export class BrowserManager {
-  private static instance: BrowserManager | null = null;
+  private static instance: BrowserManager;
   private browser: Browser | null = null;
 
   // Private constructor, forces use of getInstance()
   private constructor() {}
 
   /**
-   * Get the single instance (singleton pattern)
-   * Ensures only one BrowserManager exists
+   * Get the single instance (singleton patten)
+   * Ensures only one BrowswerManager exists
    */
   public static getInstance(): BrowserManager {
     if (!BrowserManager.instance) {
@@ -32,11 +36,12 @@ export class BrowserManager {
    */
   public async getBrowser(): Promise<Browser> {
     if (!this.browser) {
+      // Default to true if not explicitly set to "false"
+      const isHeadless = process.env.HEADLESS !== "false";
+
       this.browser = await chromium.launch({
-        headless: false, // set to true in production/CI
-        args: ["--no-sandbox", "--disable-setuid-sandbox"],
+        headless: isHeadless,
       });
-      console.log("Browser launched (shared across calls)");
     }
     return this.browser;
   }
@@ -50,10 +55,11 @@ export class BrowserManager {
     const browser = await this.getBrowser();
     const page = await browser.newPage();
 
-    // Realistic User-Agent — makes scraper look like a normal browser
+    // Realistic User-Agent - makes scraper look like a normal browser
     await page.setExtraHTTPHeaders({
-      "User-Agent":
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+      userAgent:
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+      "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
     });
 
     return page;
@@ -67,7 +73,6 @@ export class BrowserManager {
     if (this.browser) {
       await this.browser.close();
       this.browser = null;
-      console.log("Browser closed");
     }
   }
 }
