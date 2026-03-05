@@ -31,3 +31,32 @@ test("getProductList returns items with title and price", async () => {
   expect(first.price.length).toBeGreaterThan(3); // at least "€X"
   expect(first.price).not.toContain("No price");
 });
+
+
+test('getProduct returns full details for a real product', async () => {
+  const retailer = new AmazonRetailer();
+
+  // Get a real ASIN from the list method (we know it works)
+  const list = await retailer.getProductList('MacBook Pro M5');
+  expect(list.length).toBeGreaterThan(0);
+
+  const realAsin = list[0].asin;
+
+  // Call the new method — should return an object
+  const detail = await retailer.getProduct(realAsin);
+
+  expect(detail).toBeDefined();
+  expect(detail).toHaveProperty('asin');
+  expect(detail.asin).toBe(realAsin);
+
+  expect(detail).toHaveProperty('title');
+  expect(detail.title).toBeTruthy();           // real title
+  expect(detail.title.length).toBeGreaterThan(10);
+
+  expect(detail).toHaveProperty('price');
+  expect(detail.price).toBeTruthy();           // real price
+
+  expect(detail).toHaveProperty('images');
+  expect(Array.isArray(detail.images)).toBe(true);
+  expect(detail.images.length).toBeGreaterThan(0); // at least one image
+});
