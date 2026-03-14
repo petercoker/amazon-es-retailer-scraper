@@ -27,44 +27,70 @@ export class AmazonRetailer {
     try {
       const url = `${AMAZON_BASE_URL}/s?k=${encodeURIComponent(keywords)}`;
       await safeGoto(targetPage, url);
+
+      // --- 1. HANDLE COOKIES ---
+      // We look for the "Accept" button and click it if it exists to clear the overlay
+      try {
+        const acceptCookies = await targetPage.waitForSelector(
+          "#sp-cc-accept",
+          { timeout: 3000 },
+        );
+        if (acceptCookies) await acceptCookies.click();
+      } catch (e) {
+        // If it's not there, just continue
+      }
+
+      // --- 2. WAIT FOR ORGANIC RESULTS ---
+      // We specifically wait for search results that are NOT ads
       await safeWaitForSelector(
         targetPage,
-        "div[data-component-type='s-search-result'], .s-result-item[data-asin]",
+        "div[data-component-type='s-search-result']:not(.AdHolder)",
         3,
       );
 
-      await targetPage.waitForSelector("div.s-result-item", {
-        timeout: 15000,
-      });
-
       return await targetPage.evaluate(() => {
         const productListItems: ProductListItem[] = [];
-        // Target any div that has a data-asin attribute (standard for search results)
-        const nodes = document.querySelectorAll("div[data-asin]");
+
+        /** * Logic:
+         * 1. Target search results with data-component-type
+         * 2. Filter out .AdHolder (Sponsored ads)
+         */
+        const nodes = document.querySelectorAll(
+          "div[data-component-type='s-search-result']",
+        );
 
         for (const node of Array.from(nodes)) {
+          // Skip if it's an Ad/Sponsored item
+          if (
+            node.classList.contains("AdHolder") ||
+            node.querySelector(".s-sponsored-label-text")
+          ) {
+            continue;
+          }
+
           const asin = node.getAttribute("data-asin");
-          // Filter out empty asins or ads
           if (!asin || asin.length < 5) continue;
 
-          // Use broader selectors for Title and Price
           const titleEl = node.querySelector(
-            "h2, .a-size-medium, .a-size-base-plus",
+            "h2 a span, .a-size-medium, .a-size-base-plus",
           );
           const title = titleEl?.textContent?.trim() || "No title";
 
-          const priceEl = node.querySelector(
-            ".a-price .a-offscreen, .a-color-price",
-          );
-          const price = priceEl?.textContent?.trim() || "No price";
+          const priceEl = node.querySelector(".a-price .a-offscreen");
+          const price = priceEl?.textContent?.trim() || "Check website";
 
-          if (title && !productListItems.find((i) => i.asin === asin)) {
+          // Only add if it's a unique organic result
+          if (
+            title !== "No title" &&
+            !productListItems.find((i) => i.asin === asin)
+          ) {
             productListItems.push({
               asin,
               title,
-              price: price || "Check website",
+              price,
             });
           }
+
           if (productListItems.length >= 5) break;
         }
         return productListItems;

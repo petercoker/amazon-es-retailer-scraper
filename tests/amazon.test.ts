@@ -1,80 +1,50 @@
 import { expect, test } from "@playwright/test";
 import { AmazonRetailer } from "../src/retailer";
+import { ProductListItem } from "../src/types";
 
-// Shared retailer instance (created once per describe block)
-let retailer: AmazonRetailer;
-let validAsin: string; // cached ASIN so we don't re-scrape list every time
-
-test.beforeAll(async () => {
-  // Set the timeout specifically for this setup hook
-  test.setTimeout(60000);
-
-  retailer = new AmazonRetailer();
-
-  // Run once before all tests in this file — get one valid ASIN
-  const list = await retailer.getProductList("MacBook Pro M5");
-
-  if (list.length === 0) {
-    throw new Error(
-      "Scraper returned 0 results. Check for CAPTCHA or selector changes.",
-    );
-  }
-
-  expect(list.length).toBeGreaterThan(0);
-  validAsin = list[0].asin;
-});
-
-test.describe("Product List Functionality", () => {
-  test("getProductList returns a non-empty list of products", async () => {
-    const list = await retailer.getProductList("MacBook Pro M5");
-
-    expect(Array.isArray(list)).toBe(true);
-
-    const first = list[0];
-    expect(first).toHaveProperty("asin");
-    expect(typeof first.asin).toBe("string");
-    expect(first.asin.length).toBeGreaterThan(5);
+test.describe("Amazon Retailer Integration", () => {
+  let retailer: AmazonRetailer;
+  let products: ProductListItem[] = [];
+  const SEARCH_KEYWORD = "MacBook Pro M5";
+  
+  test.beforeAll(async () => {
+    test.setTimeout(60000);
+    retailer = new AmazonRetailer();
+    products = await retailer.getProductList(SEARCH_KEYWORD);
   });
 
-  test("getProductList returns items with title and price", async () => {
-    const list = await retailer.getProductList("MacBook Pro M5");
-
-    const first = list[0];
-    expect(first).toHaveProperty("title");
-    expect(typeof first.title).toBe("string");
-    expect(first.title.length).toBeGreaterThan(10);
-    expect(first.title).not.toContain("No title");
-
-    expect(first).toHaveProperty("price");
-    expect(typeof first.price).toBe("string");
-    expect(first.price.length).toBeGreaterThan(3);
-    expect(first.price).not.toContain("No price");
+  // Cleanup after all tests (optional but good practice)
+  test.afterAll(async () => {
+    await retailer.cleanup();
   });
-});
 
-test.describe("Individual Product Details", () => {
-  test("getProduct returns full details for a real product", async () => {
-    // Use cached valid ASIN from beforeAll — no repeated getProductList call
-    const detail = await retailer.getProduct(validAsin);
+  test("Search results are organic and high-quality", async () => {
+    expect(products.length).toBeGreaterThan(0);
 
-    expect(detail).toBeDefined();
-    expect(detail).toHaveProperty("asin");
-    expect(detail.asin).toBe(validAsin);
+    for (const item of products) {
+      // 1. Check ASIN Format (Standard 10 chars)
+      expect(item.asin).toMatch(/^[A-Z0-9]{10}$/);
 
-    expect(detail).toHaveProperty("title");
-    expect(detail.title).toBeTruthy();
-    expect(detail.title.length).toBeGreaterThan(10);
+      // 2. Check for Ad-Filtering (No "Sponsored" competitors)
+      const title = item.title.toLowerCase();
+      expect(title).not.toContain("asus");
+      expect(title).not.toContain("hp 15");
+      expect(title).toContain("macbook");
 
-    expect(detail).toHaveProperty("price");
-    expect(detail.price).toBeTruthy();
+      // 3. Check for Data Completion (Cookie banner handling proof)
+      expect(item.title).not.toBe("No title");
+      expect(item.price).not.toMatch(/Check website|No price/);
+    }
+  });
 
-    expect(detail).toHaveProperty("images");
-    expect(Array.isArray(detail.images)).toBe(true);
+  test("Product detail extraction works for the first result", async () => {
+    test.skip(products.length === 0, "No products found to test details.");
+
+    const detail = await retailer.getProduct(products[0].asin);
+
+    expect(detail.asin).toBe(products[0].asin);
+    expect(detail.title.toLowerCase()).toContain("macbook");
     expect(detail.images.length).toBeGreaterThan(0);
+    expect(detail.images[0]).toContain("media-amazon.com");
   });
-});
-
-// Cleanup after all tests (optional but good practice)
-test.afterAll(async () => {
-  await retailer.cleanup();
 });
