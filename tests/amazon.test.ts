@@ -13,6 +13,7 @@ test.describe("Amazon Retailer Integration", () => {
     products = await retailer.getProductList(SEARCH_KEYWORD);
   });
 
+  // Cleanup after all tests (optional but good practice)
   test.afterAll(async () => {
     await retailer.cleanup();
   });
