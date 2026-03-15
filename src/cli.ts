@@ -1,5 +1,5 @@
 import * as dotenv from "dotenv";
-import { AmazonRetailer } from "./retailer";
+import { AmazonRetailer } from "./retailers/amazon";
 
 // Load .env configs
 dotenv.config();
@@ -21,7 +21,7 @@ async function main() {
     if (list.length > 0) {
       const firstAsin = list[0].asin;
       console.log(`\nFetching details for: ${firstAsin}...`);
-      
+
       const detail = await retailer.getProduct(firstAsin);
       console.log(`Product Details:`, JSON.stringify(detail, null, 2));
     }

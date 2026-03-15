@@ -1,7 +1,7 @@
-import { ProductDetail, ProductListItem } from "./types";
-import { BrowserManager } from "./utility/browser-manager";
-import { AMAZON_BASE_URL } from "./utility/constants";
-import { safeGoto, safeWaitForSelector } from "./utility/page-actions";
+import { AMAZON_BASE_URL } from "../core/constants";
+import { BrowserManager } from "../utils/browser-manager";
+import { safeGoto, safeWaitForSelector } from "../utils/page-actions";
+import { ProductDetail, ProductListItem } from "../core/types/index";
 /**
  * Main scraper class for Amazon.es.
  * Uses shared browser instance (via BrowserManager) to avoid repeated launches.
