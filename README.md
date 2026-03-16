@@ -1,15 +1,22 @@
-# Amazon.es Retailer Scraper
+# E-Commerce Retailer Scraper Framework
 
-A clean, TDD-driven Node.js + TypeScript + Playwright scraper for **Amazon.es**.  
-Implements the two required methods from the assignment:
+A clean, extensible, TDD-built scraper for E-Commerce using Playwright + Node.js/TypeScript .
 
-- `getProductList(keywords)` — searches and returns list of products (asin, title, price)
-- `getProduct(id)` — fetches product details page (asin, title, price, images)
+## Features
 
-## Setup
+- `getProductList(keywords)` – returns top 5 organic products
+- `getProduct(id)` – returns full product details + images
+- Reusable BrowserManager (singleton)
+- Decoupled pipelines (JSON + CSV export)
+- Retry logic + cookie handling
+- Ready for more retailers (eBay, AliExpress, etc.)
+
+## Quick Start
 
 ```bash
-git clone <your-repo-url>
-cd amazon-es-retailer
 npm install
 npx playwright install chromium
+npm run demo          # or npm run demo "wireless earbuds"
+```
+
+

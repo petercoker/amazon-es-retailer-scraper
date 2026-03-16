@@ -1,4 +1,5 @@
 import { AMAZON_BASE_URL } from "../core/constants";
+import { events } from "../core/events";
 import { ScraperCore } from "../core/scraper-core";
 import { Product } from "../core/types";
 import { safeGoto, safeWaitForSelector } from "../utility/page-actions";
@@ -77,7 +78,7 @@ export class AmazonAdapter extends ScraperCore {
       });
 
       // 2. Parse prices in Node.js (outside evaluate)
-      return rawItems.map((item) => {
+      const list = rawItems.map((item) => {
         const { price, currency } = parsePrice(item.priceText);
         return {
           retailer: "amazon",
@@ -91,6 +92,10 @@ export class AmazonAdapter extends ScraperCore {
           metadata: {},
         } satisfies Product;
       });
+
+      // Emit the data so pipelines can save it
+      events.emitProductList(list);
+      return list;
     } catch (error) {
       // Take a screenshot if it fails so you can see if you got hit by a CAPTCHA
       await targetPage.screenshot({ path: `error-search-${Date.now()}.png` });
@@ -101,8 +106,8 @@ export class AmazonAdapter extends ScraperCore {
       // Only close the page if we created it (not reusing an existing page)
       if (!existingPage) {
         await targetPage.close();
+      }
     }
-  }
   }
   async getProduct(
     asin: string,
@@ -142,8 +147,7 @@ export class AmazonAdapter extends ScraperCore {
 
       // 2. Parse price in Node.js
       const { price, currency } = parsePrice(rawDetail.priceText);
-
-      return {
+      const product = {
         retailer: "amazon",
         id: rawDetail.productAsin,
         url: targetPage.url(),
@@ -153,7 +157,10 @@ export class AmazonAdapter extends ScraperCore {
         images: rawDetail.images,
         availability: "unknown",
         metadata: {},
-      };
+      } satisfies Product;
+      // Emit the data so pipelines can save it
+      events.emitProductDetail(product);
+      return product;
     } finally {
       if (!existingPage) await targetPage.close();
     }
