@@ -1,5 +1,5 @@
 import * as dotenv from "dotenv";
-import { AmazonRetailer } from "./retailers/amazon";
+import { AmazonAdapter } from "./retailers/amazon";
 
 // Load .env configs
 dotenv.config();
@@ -8,7 +8,7 @@ async function main() {
   const args = process.argv.slice(2);
   const keywords = args.length === 0 ? "MacBook Pro" : args.join(" ");
 
-  const retailer = new AmazonRetailer();
+  const retailer = new AmazonAdapter();
 
   try {
     console.log(`\n=== Amazon.es Scraper CLI ===`);

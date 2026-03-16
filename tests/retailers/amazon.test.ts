@@ -1,15 +1,15 @@
 import { expect, test } from "@playwright/test";
 import { Product } from "../../src/core/types";
-import { AmazonRetailer } from "../../src/retailers/amazon";
+import { AmazonAdapter } from "../../src/retailers/amazon";
 
 test.describe("Amazon Retailer Integration", () => {
-  let retailer: AmazonRetailer;
+  let retailer: AmazonAdapter;
   let products: Product[] = [];
   const SEARCH_KEYWORD = "MacBook Pro M5";
 
   test.beforeAll(async () => {
     test.setTimeout(60000);
-    retailer = new AmazonRetailer();
+    retailer = new AmazonAdapter();
     products = await retailer.getProductList(SEARCH_KEYWORD);
   });
 

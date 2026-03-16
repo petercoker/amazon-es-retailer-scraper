@@ -1,22 +1,14 @@
 import { AMAZON_BASE_URL } from "../core/constants";
+import { ScraperCore } from "../core/scraper-core";
 import { Product } from "../core/types";
-import { BrowserManager } from "../utility/browser-manager";
 import { safeGoto, safeWaitForSelector } from "../utility/page-actions";
 import { parsePrice } from "../utility/utils";
 
 /**
- * Main scraper class for Amazon.es.
- * Uses shared browser instance (via BrowserManager) to avoid repeated launches.
+ * Amazon.es Adapter
+ * Extends the core framework and implements Amazon-specific scraping logic.
  */
-export class AmazonRetailer {
-  private browserManager = BrowserManager.getInstance();
-
-  /**
-   * Search Amazon and return list of products with asin, title, price.
-   * @param keywords - Search term (e.g., "MacBook Pro M5")
-   * @param page - Optional existing page to reuse (avoids opening/closing)
-   * @returns Array of product items (max 5)
-   */
+export class AmazonAdapter extends ScraperCore {
   async getProductList(
     keywords: string,
     page?: import("playwright").Page,
@@ -50,7 +42,7 @@ export class AmazonRetailer {
         3,
       );
 
-      // 1. Get raw data from browser (only DOM stuff)
+      // 1. Get raw data from browser
       const rawItems = await targetPage.evaluate(() => {
         const items: { asin: string; title: string; priceText: string }[] = [];
 
@@ -79,21 +71,18 @@ export class AmazonRetailer {
           const priceText = priceEl?.textContent?.trim() || "No price";
 
           items.push({ asin, title, priceText });
-
           if (items.length >= 5) break;
         }
-
         return items;
       });
 
-      // 2. Parse prices **in Node.js** (no browser context needed)
+      // 2. Parse prices in Node.js (outside evaluate)
       return rawItems.map((item) => {
         const { price, currency } = parsePrice(item.priceText);
-
         return {
           retailer: "amazon",
           id: item.asin,
-          url: "", // can fill later if needed
+          url: "",
           title: item.title,
           price,
           currency,
@@ -112,16 +101,9 @@ export class AmazonRetailer {
       // Only close the page if we created it (not reusing an existing page)
       if (!existingPage) {
         await targetPage.close();
-      }
     }
   }
-
-  /**
-   * Fetch full details for a single product by ASIN.
-   * @param asin - Amazon product ID (e.g. "B0DLHH2QR6")
-   * @param page - Optional existing page to reuse (avoids opening/closing)
-   * @returns Product details (asin, title, price, images)
-   */
+  }
   async getProduct(
     asin: string,
     page?: import("playwright").Page,
@@ -133,10 +115,10 @@ export class AmazonRetailer {
 
     try {
       const url = `${AMAZON_BASE_URL}/dp/${asin}`;
-      // Updated to use the utility
       await safeGoto(targetPage, url);
       await safeWaitForSelector(targetPage, "#productTitle", 3);
 
+      // 1. Get raw data from browser
       const rawDetail = await targetPage.evaluate((productAsin) => {
         const title =
           document.querySelector("#productTitle")?.textContent?.trim() ||
@@ -150,18 +132,15 @@ export class AmazonRetailer {
         const priceText = priceEl?.textContent?.trim() || "No price";
 
         const images = Array.from(
-          document.querySelectorAll(
-            "#landingImage, #imgTagWrapperId img, #altImages img",
-          ),
+          document.querySelectorAll("#landingImage, #imgTagWrapperId img"),
         )
           .map((img) => (img as HTMLImageElement).src)
-          .filter(Boolean)
           .slice(0, 5);
 
         return { productAsin, title, priceText, images };
       }, asin);
 
-      // Parse price **in Node.js** after evaluation
+      // 2. Parse price in Node.js
       const { price, currency } = parsePrice(rawDetail.priceText);
 
       return {
@@ -176,16 +155,10 @@ export class AmazonRetailer {
         metadata: {},
       };
     } finally {
-      if (!existingPage) {
-        await targetPage.close();
-      }
+      if (!existingPage) await targetPage.close();
     }
   }
 
-  /**
-   * Clean up shared browser when application ends.
-   * Call this once when your script finishes.
-   */
   async cleanup(): Promise<void> {
     await this.browserManager.closeBrowser();
   }
