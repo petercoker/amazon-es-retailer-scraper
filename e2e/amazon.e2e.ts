@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
-import { Product } from "../../src/core/types";
-import { AmazonAdapter } from "../../src/retailers/amazon";
+import { Product } from "../src/core/types";
+import { AmazonAdapter } from "../src/retailers/amazon";
+
 
 test.describe("Amazon Retailer Integration", () => {
   let retailer: AmazonAdapter;

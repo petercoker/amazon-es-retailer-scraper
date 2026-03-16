@@ -6,7 +6,6 @@
  * @param defaultCurrency - Optional fallback currency (default: "EUR")
  * @returns { price: number | null, currency: string }
  */
-
 export function parsePrice(
   priceText: string | null | undefined,
   defaultCurrency = "EUR"
@@ -18,7 +17,7 @@ export function parsePrice(
   // Normalize: remove spaces, trim
   let clean = priceText.trim().replace(/\s+/g, ""); // remove all spaces
 
-  // Detect currency symbols (expandable, very simple — looks at start or end)
+  // Detect currency symbols
   let currency = defaultCurrency;
   const symbols = "€$£¥₹"; // add more if needed
 
@@ -27,11 +26,24 @@ export function parsePrice(
     clean = clean.slice(1); // remove first char
   } else if (symbols.includes(clean[clean.length - 1])) {
     currency = clean[clean.length - 1];
-    clean = clean.slice(0, -1); // remove last char
+    clean = clean.slice(0, -1);
   }
 
-  // Replace comma with dot, to make it a number (European comma → dot)
-  clean = clean.replace(",", ".");
+  // Handle European vs US number formatting
+  const lastComma = clean.lastIndexOf(",");
+  const lastDot = clean.lastIndexOf(".");
+
+  if (lastComma > lastDot) {
+    // European format (e.g., 1.829,00 or just 15,50)
+    // The comma is the decimal. Remove dots (thousands separators) first.
+    clean = clean.replace(/\./g, ""); 
+    // Now replace the decimal comma with a standard dot
+    clean = clean.replace(",", "."); 
+  } else {
+    // US format (e.g., 1,829.00 or just 15.50)
+    // The dot is the decimal. Remove commas (thousands separators).
+    clean = clean.replace(/,/g, ""); 
+  }
 
   // Remove any remaining non-numeric chars except dot & minus
   clean = clean.replace(/[^0-9.-]/g, "");
@@ -44,4 +56,3 @@ export function parsePrice(
     currency,
   };
 }
-

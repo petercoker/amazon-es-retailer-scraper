@@ -1,4 +1,4 @@
-import { AMAZON_BASE_URL } from "../core/constants";
+import { AMAZON_ES_BASE_URL } from "../core/constants";
 import { events } from "../core/events";
 import { ScraperCore } from "../core/scraper-core";
 import { Product } from "../core/types";
@@ -20,7 +20,7 @@ export class AmazonAdapter extends ScraperCore {
     const targetPage = page ?? (await this.browserManager.newPage());
 
     try {
-      const url = `${AMAZON_BASE_URL}/s?k=${encodeURIComponent(keywords)}`;
+      const url = `${AMAZON_ES_BASE_URL}/s?k=${encodeURIComponent(keywords)}`;
       await safeGoto(targetPage, url);
 
       // --- 1. HANDLE COOKIES ---
@@ -119,7 +119,7 @@ export class AmazonAdapter extends ScraperCore {
     const targetPage = page ?? (await this.browserManager.newPage());
 
     try {
-      const url = `${AMAZON_BASE_URL}/dp/${asin}`;
+      const url = `${AMAZON_ES_BASE_URL}/dp/${asin}`;
       await safeGoto(targetPage, url);
       await safeWaitForSelector(targetPage, "#productTitle", 3);
 
