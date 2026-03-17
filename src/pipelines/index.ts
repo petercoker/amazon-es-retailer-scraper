@@ -13,19 +13,47 @@ export async function saveToJson(
 }
 
 /**
- * Simple CSV pipleline
+ * Escape any value for safe CSV usage:
+ * - null/undefined → empty string
+ * - double quotes → doubled (" → "")
+ * - wrap everything in quotes
+ */
+function csvEscape(value: any): string {
+  if (value == null) return '""';
+  const str = String(value).replace(/"/g, '""');
+  return `"${str}"`;
+}
+
+/**
+ * Simple CSV pipeline – saves products to a clean, Excel-compatible file
  */
 export async function saveToCsv(
   products: Product[],
-  filename = "products.csv",
-) {
+  filename = "products.csv"
+): Promise<void> {
+  if (products.length === 0) {
+    console.log("No products to save to CSV");
+    return;
+  }
+
+  // Header
   const header = "retailer,id,title,price,currency\n";
-  const rows = products.map(
-    (product) => `"${product.retailer}",
-    "${product.id}", "${product.title.replace(/"/g, '""')}",
-    "${product.price}","${product.currency}
-    `,
-  );
-  await fs.writeFile(filename, header + rows);
-  console.log(`Saved to ${filename}`);
+
+  // Rows – every field properly escaped
+  const rows = products
+    .map((p) =>
+      [
+        csvEscape(p.retailer),
+        csvEscape(p.id),
+        csvEscape(p.title),
+        csvEscape(p.price ?? ""),
+        csvEscape(p.currency ?? ""),
+      ].join(",")
+    )
+    .join("\n");
+
+  const csvContent = header + rows;
+
+  await fs.writeFile(filename, csvContent, "utf-8");
+  console.log(`Saved ${products.length} products to ${filename}`);
 }
