@@ -20,8 +20,14 @@ export class AmazonAdapter extends ScraperCore {
     const targetPage = page ?? (await this.browserManager.newPage());
 
     try {
+      // Delay 1: before first navigation (think like typing search)
+      await this.randomDelay(1200, 3500);
+
       const url = `${AMAZON_ES_BASE_URL}/s?k=${encodeURIComponent(keywords)}`;
       await safeGoto(targetPage, url);
+
+      // Delay 2: after page load, before cookie click (page settling)
+      await this.randomDelay(800, 2500);
 
       // --- 1. HANDLE COOKIES ---
       // We look for the "Accept" button and click it if it exists to clear the overlay
@@ -34,6 +40,9 @@ export class AmazonAdapter extends ScraperCore {
       } catch (e) {
         // If it's not there, just continue
       }
+
+      // Delay 3: after cookies, before waiting for results
+      await this.randomDelay(1000, 3000);
 
       // --- 2. WAIT FOR ORGANIC RESULTS ---
       // We specifically wait for search results that are NOT ads
@@ -93,6 +102,9 @@ export class AmazonAdapter extends ScraperCore {
         } satisfies Product;
       });
 
+      // Delay 4: before returning (breathing room)
+      await this.randomDelay(500, 1500);
+
       // Emit the data so pipelines can save it
       events.emitProductList(list);
       return list;
@@ -119,8 +131,15 @@ export class AmazonAdapter extends ScraperCore {
     const targetPage = page ?? (await this.browserManager.newPage());
 
     try {
+      // Delay 1: before navigation
+      await this.randomDelay(1200, 3500);
+
       const url = `${AMAZON_ES_BASE_URL}/dp/${asin}`;
       await safeGoto(targetPage, url);
+
+      // Delay 2: after load
+      await this.randomDelay(1000, 3000);
+
       await safeWaitForSelector(targetPage, "#productTitle", 3);
 
       // 1. Get raw data from browser
@@ -158,6 +177,10 @@ export class AmazonAdapter extends ScraperCore {
         availability: "unknown",
         metadata: {},
       } satisfies Product;
+
+      // Delay 3: before returning
+      await this.randomDelay(500, 1500);
+
       // Emit the data so pipelines can save it
       events.emitProductDetail(product);
       return product;

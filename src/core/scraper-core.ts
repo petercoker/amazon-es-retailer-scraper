@@ -28,4 +28,14 @@ export abstract class ScraperCore {
   async cleanup(): Promise<void> {
     await this.browserManager.closeBrowser();
   }
+
+  /**
+   * Random delay between min and max milliseconds
+   * Helps avoid rate-limiting and bot detection
+   */
+  protected async randomDelay(minMs = 2000, maxMs = 6000): Promise<void> {
+    const delay = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs;
+    console.log(`[Delay] Waiting ${delay} ms ...`);
+    await new Promise(resolve => setTimeout(resolve, delay));
+  }
 }
