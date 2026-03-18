@@ -2,6 +2,7 @@
 node_modules/
 dist/
 dist
+.env
 
 # Playwright reports and traces
 playwright-report/
@@ -13,3 +14,4 @@ playwright/.cache/
 
 # Jest
 coverage
+
