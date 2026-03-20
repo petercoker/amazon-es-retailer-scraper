@@ -20,7 +20,11 @@ test.describe("Amazon Retailer Integration", () => {
   });
 
   test("Search results are organic and high-quality", async () => {
-    expect(products.length).toBeGreaterThan(0);
+    // Automated tests should verify that the application code works for the end users, and 
+    // avoid relying on implementation details such as things which users will not typically use, 
+    // see, or even know about such as the name of a function, whether something is an array, or the CSS 
+    // class of some element.
+    expect(products.length).toBeGreaterThan(0); 
 
     for (const item of products) {
       // 1. Check ASIN Format (Standard 10 chars)
